@@ -4,11 +4,11 @@ js kdtree and flann lib benchmark
 
 ## Libraries
 
-Library | Language | Version | Notes
---------|----------|---------|-------------------
-[flann.js](https://github.com/agrbin/flann.js) | js + wasm | - | extremely slow when >= 1000 points
-[kd-tree-jsavascript](https://github.com/ubilabs/kd-tree-javascript) | js | -
-[pcl.js](https://github.com/luoxuhai/pcl.js) | js + wasm | - | 1.16.0
+Library | Language |  Size   | Version | Notes
+--------|----------|---------|---------|-------------------
+[flann.js](https://github.com/agrbin/flann.js) | js + wasm | 1M | - | extremely slow when >= 1000 points
+[kd-tree-jsavascript](https://github.com/ubilabs/kd-tree-javascript) | js | 5k | -
+[pcl.js](https://github.com/luoxuhai/pcl.js) | js + wasm | 3 M |1.16.0 
 
 
 ## Build and Run
