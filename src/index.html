@@ -1,0 +1,234 @@
+<html>
+  <style>
+    #canvas {
+      border: 1px solid #000;
+      float: left;
+    }
+
+    #controls {
+      float: left;
+      margin-left: 10px;
+    }
+
+    #container {
+      overflow: hidden;
+    }
+  </style>
+  <body>
+    <div id="container">
+      <!-- <canvas id="canvas" width="1024" height="600"></canvas> -->
+      <div id="controls">
+        <h3>benchmark build kdtree results</h3>
+        <div>
+            <a href="https://github.com/agrbin/flann.js">flann.js</a><br/>
+            <label id="flann_text">...</label>
+        </div>
+        <div>
+            <a href="https://github.com/ubilabs/kd-tree-javascript">kdtree.js</a><br/>
+            <label id="kdtree_text">...</label>
+        </div>
+        <div>
+            <a href="https://github.com/luoxuhai/pcl.js">pcl.js</a><br/>
+            <label  id="pcl_text">...</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- <script src="../jquery-1.7.2.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/pcl.js/dist/pcl.js"></script> -->
+    <script src="pcl.js"></script>
+    <script src="flann.js"></script>
+    <script src="kdTree.js"></script>
+    <script>
+
+        function Timer() {
+            var start = null;
+            this.reset = function () {
+                start = (new Date()).getTime();
+            };
+            this.get = function () {
+                return (new Date()).getTime() - start;
+            };
+            this.reset();
+        };
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function outputHtmlStart(name, size) {
+            if (document.getElementById(name).innerText == "...") {
+                document.getElementById(name).innerText = "";
+            }
+            document.getElementById(name).innerText += "start benchmark: " + size +  "...\n";
+            await delay(100);
+        }
+        async function outputHtml(name, size, duration) {
+            if (document.getElementById(name).innerText == "...") {
+                document.getElementById(name).innerText = "";
+            }
+            document.getElementById(name).innerText += "[ok] [took " + duration + " ms] for " + size + " points\n";
+            console.log("> [ok] [took " + duration + " ms] for " + size + " points" );
+            await delay(100);
+        }
+
+        async function testpcl(dimsize) {
+            // 1. init
+            await PCL.init();
+
+            // 2. build points
+            let cloud = new PCL.PointCloud(PCL.PointXYZ);
+            // cloud.width = 1000;
+            // cloud.height = 1;
+            // cloud.resize(cloud.width * cloud.height, new PCL.PointXYZ(0, 0, 0));
+            // cloud.points.length = cloud.width * cloud.height;
+
+            // for (let i = 0; i < 100000; i++) {
+            //     let point = {x: Math.random() * 1024, y: Math.random() * 1024, z: Math.random() * 1024};
+            //     let pt = new PCL.PointXYZ(point.x, point.y, point.z);
+            //     //cloud.points.push(pt);
+            //     cloud.addPoint(pt);
+            //     // console.log(pt);
+            // }
+            // let dimsize = 47;
+            // let dimsize = 100;
+            let pts  = Array(dimsize * dimsize * dimsize);
+            let i = 0;
+            for (let x = 0; x < dimsize; x++) {
+                for (let y = 0; y < dimsize; y++) {
+                    for (let z = 0; z < dimsize; z++) {
+                        let point = {x: Math.random() * 1024, y: Math.random() * 1024, z: Math.random() * 1024};
+                        let pt = new PCL.PointXYZ(point.x, point.y, point.z);
+                        // let pt = new PCL.PointXYZ(x, y, z);
+                        pts[i] = pt;
+                        i++;
+                    }
+                }
+            }
+            for(let i = 0; i < pts.length; i++) {
+                cloud.addPoint(pts[i]);
+            }
+
+            // 3. build kdtree
+            await outputHtmlStart('pcl_text', cloud.size);
+            const kdtree = new PCL.KdTreeFLANN(PCL.PointXYZ, true);
+            var timer = new Timer();
+            kdtree.setInputCloud(cloud);
+            var duration = timer.get();
+            await outputHtml('pcl_text', cloud.size, duration);
+
+            // 4. search
+            const point = new PCL.PointXYZ(1, 2, 3);
+            const k = 2
+            timer = new Timer();
+            let result = kdtree.nearestKSearch(point, k);
+            console.log("> [ok] [took " + timer.get() + " ms] for 2 search" );
+            let {indices, distances} = result;
+            console.log(result);
+            for(let i = 0; i < indices.size; i++) {
+                let index = indices.data[i];
+                console.log(i, index, distances.data[i]);
+                console.log(i, index, pts[index]);
+            }
+        }
+
+        async function testkdtree(dimsize) {
+
+            function distance(a, b) {
+                var dx = a.x-b.x;
+                var dy = a.y-b.y;
+                var dz = a.z-b.z;
+                return dx*dx + dy*dy + dz*dz;
+            }
+
+            let points  = Array(dimsize * dimsize * dimsize);
+            let i = 0;
+            for (let x = 0; x < dimsize; x++) {
+                for (let y = 0; y < dimsize; y++) {
+                    for (let z = 0; z < dimsize; z++) {
+                        let pt = {x: Math.random() * 1024, y: Math.random() * 1024, z: Math.random() * 1024, id:i};
+                        // let pt = {x:x, y: y, z: z, id:i};
+                        points[i] = pt;
+                        i++;
+                    }
+                }
+            }
+
+            // build tree
+            await outputHtmlStart('kdtree_text', points.length);
+            var timer = new Timer();
+            tree = new kdTree(points, distance, ["x", "y", "z"]);
+            var duration = timer.get();
+            await outputHtml('kdtree_text', points.length, duration);
+
+            // query tree
+            var point = {x: 1, y: 2, z: 3};
+            const k = 5;
+            var nearest = tree.nearest(point, k);
+            for(var j = 0; j < nearest.length; j++) {
+                var point = nearest[j][0];
+                console.log(j, point.x, point.y, point.z);
+            }
+        }
+
+        async function testflann(dimsize) {
+
+            dimension = 3
+            var dimZeroes = nZeroes(dimension);
+
+            n = dimsize * dimsize *  dimsize;
+
+            function nZeroes(n) {
+                return Array.apply(null, new Array(n)).map(function () { return 0; });
+            }
+            function randomColor() {
+                return '#' + Math.random().toString().substr(2, 3);
+            };
+            function randomPoint() {
+                return dimZeroes.map(Math.random);
+            };
+
+            var narr = nZeroes(n);
+            dataset =  {
+                pts : narr.map(randomPoint),
+                colors : narr.map(randomColor)
+            };
+
+            // build tree
+            await outputHtmlStart('flann_text', dataset.pts.length);
+            var timer = new Timer();
+            index = Flann.fromDataset(dataset.pts);
+            var duration = timer.get();
+            await outputHtml('flann_text', dataset.pts.length, duration);
+
+            // query tree
+            queryPoints = [[1, 2, 3]];
+            var res = index.multiQuery(queryPoints, 2);  // [{index: distance}]
+            for(let e of res) {
+                for(let k in e) {
+                    let index = parseInt(k);
+                    let distance = e[k];
+                    let pt = dataset.pts[index];
+                    console.log(k, e[k], pt);
+                }
+            }
+        }
+
+        async function main() {
+
+            await testpcl(10);
+            await testpcl(47);
+            await testpcl(100);
+
+            await testkdtree(10);
+            await testkdtree(47);
+            await testkdtree(100);
+
+            await testflann(9);
+            await testflann(10);
+        }
+        
+        main()
+    </script>
+  </body>
+</html>
