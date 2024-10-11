@@ -13,7 +13,7 @@ Library | Language |  Size   | Version | Notes
 
 ## Build and Run
 
-start static http server and open: http://localhost:8000/
+start static http server and open: http://localhost:8000/src/
 
 ```bash
 python -m http.server 8000
